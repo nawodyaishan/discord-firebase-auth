@@ -44,6 +44,10 @@ export abstract class AuthHelpers {
     }
   }
 
+  public static hasMultipleAuthProviders(authUser: User): boolean {
+    return authUser.providerData && authUser.providerData.length > 1;
+  }
+
   public static getFirebaseErrorMessage(errorCode: string): string | undefined {
     switch (errorCode) {
       case 'auth/email-already-in-use':

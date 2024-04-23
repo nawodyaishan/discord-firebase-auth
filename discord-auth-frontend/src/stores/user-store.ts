@@ -171,13 +171,34 @@ const useUserStore = create<UserState>((set, _get) => ({
     }
   },
   unlinkAuthProvider: async (user: User, providerId: string): Promise<boolean> => {
-    if (user) {
-      return AuthHelpers.unlinkProvider(user, providerId);
-    } else {
-      toast({
-        title: 'No User Found',
-        description: 'No authenticated user available.'
-      });
+    try {
+      if (!AuthHelpers.hasMultipleAuthProviders(user)) {
+        toast({
+          title: 'Unlink Not Allowed',
+          description: 'You cannot unlink your only authentication method.'
+        });
+        return false;
+      }
+      if (user) {
+        return AuthHelpers.unlinkProvider(user, providerId);
+      } else {
+        toast({
+          title: 'No User Found',
+          description: 'No authenticated user available.'
+        });
+        return false;
+      }
+    } catch (error: unknown) {
+      if (error instanceof FirebaseError) {
+        console.error(`Failed to unlink ${providerId}:`, error);
+        toast({
+          title: `Unlink ${providerId} Failed`,
+          description: error.message || `Failed to unlink ${providerId} account.`
+        });
+        return false;
+      } else {
+        console.error('Unexpected error:', error);
+      }
       return false;
     }
   }
