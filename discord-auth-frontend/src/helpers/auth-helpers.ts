@@ -1,4 +1,4 @@
-import { EmailAuthProvider, linkWithCredential, User } from 'firebase/auth';
+import { EmailAuthProvider, linkWithCredential, unlink, User } from 'firebase/auth';
 import { toast } from '@/components/ui/use-toast.ts';
 import { AUTH_PROVIDER_DATA } from '@/constants/provider-data.ts';
 import * as _ from 'lodash';
@@ -20,6 +20,25 @@ export abstract class AuthHelpers {
       toast({
         title: 'Linking Failed',
         description: error.message || 'Failed to add email and password to your account.'
+      });
+      return false;
+    }
+  }
+
+  public static async unlinkProvider(user: User, providerId: string): Promise<boolean> {
+    try {
+      await unlink(user, providerId);
+      console.log(`Provider ${providerId} unlinked successfully`);
+      toast({
+        title: 'Provider Unlinked',
+        description: `Your ${this.getProviderName(providerId)} account has been removed.`
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to unlink provider ${providerId}:`, error);
+      toast({
+        title: 'Unlink Failed',
+        description: `Failed to remove ${this.getProviderName(providerId)} account.`
       });
       return false;
     }

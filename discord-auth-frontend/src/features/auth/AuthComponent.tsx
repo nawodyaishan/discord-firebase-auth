@@ -40,8 +40,14 @@ const updatePasswordSchema = z.object({
 type LinkPasswordFormData = z.infer<typeof updatePasswordSchema>;
 
 function AuthComponent() {
-  const { login, logout, twitterLogin, linkEmailAndPassword, linkTwitterAuthToEmailPass } =
-    useUserStore((state) => state);
+  const {
+    login,
+    logout,
+    twitterLogin,
+    linkEmailAndPassword,
+    linkTwitterAuthToEmailPass,
+    unlinkAuthProvider
+  } = useUserStore((state) => state);
   const { authUser } = useCurrentUser();
   const { toast } = useToast();
 
@@ -156,6 +162,37 @@ function AuthComponent() {
       console.log('Twitter linked successfully.');
     } else {
       console.error('Failed to link Twitter.');
+    }
+  };
+
+  const handleUnlinkProvider = async (providerId: string) => {
+    if (!authUser) {
+      toast({
+        title: 'Authentication Required',
+        description: 'You need to be logged in to modify authentication methods.'
+      });
+      return;
+    }
+
+    try {
+      const success = await unlinkAuthProvider(authUser, providerId);
+      if (success) {
+        toast({
+          title: 'Unlink Successful',
+          description: `${AuthHelpers.getProviderName(providerId)} has been successfully unlinked from your account.`
+        });
+        console.log(`${AuthHelpers.getProviderName(providerId)} unlinked successfully.`);
+      } else {
+        throw new Error(`Failed to unlink ${AuthHelpers.getProviderName(providerId)}.`);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Unlink Failed',
+        description: `Could not unlink ${AuthHelpers.getProviderName(providerId)}: ${error.message}`
+      });
+      console.error(
+        `Failed to unlink ${AuthHelpers.getProviderName(providerId)}: ${error.message}`
+      );
     }
   };
 
@@ -291,7 +328,7 @@ function AuthComponent() {
           </DropdownMenuItem>
           {authUser && !AuthHelpers.checkAuthProvider(authUser, 'twitter.com') && (
             <DropdownMenuItem onSelect={handleLinkTwitter}>
-              <Button variant={'destructive'}>
+              <Button variant={'default'}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Link Twitter Account
               </Button>
@@ -305,6 +342,32 @@ function AuthComponent() {
               </Button>
             </DropdownMenuItem>
           )}
+          {authUser &&
+            authUser.providerData.map((provider, index) => (
+              <DropdownMenuItem key={index}>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button onClick={(e) => e.stopPropagation()}>
+                      Unlink {AuthHelpers.getProviderName(provider.providerId)}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent onClick={(e) => e.stopPropagation()}>
+                    <SheetHeader>
+                      <SheetTitle>Confirm Unlink</SheetTitle>
+                    </SheetHeader>
+                    <p>
+                      Are you sure you want to unlink{' '}
+                      {AuthHelpers.getProviderName(provider.providerId)}?
+                    </p>
+                    <Button
+                      variant={'destructive'}
+                      onClick={() => handleUnlinkProvider(provider.providerId)}>
+                      Confirm
+                    </Button>
+                  </SheetContent>
+                </Sheet>
+              </DropdownMenuItem>
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

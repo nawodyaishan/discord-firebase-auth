@@ -22,6 +22,7 @@ interface UserState {
   twitterLogin: () => Promise<boolean | undefined>;
   linkEmailAndPassword: (user: User, email: string, password: string) => Promise<boolean>;
   linkTwitterAuthToEmailPass: (user: User) => Promise<boolean>;
+  unlinkAuthProvider: (user: User, providerId: string) => Promise<boolean>;
 }
 
 const useUserStore = create<UserState>((set, _get) => ({
@@ -166,6 +167,17 @@ const useUserStore = create<UserState>((set, _get) => ({
       } else {
         console.error('Unexpected error:', error);
       }
+      return false;
+    }
+  },
+  unlinkAuthProvider: async (user: User, providerId: string): Promise<boolean> => {
+    if (user) {
+      return AuthHelpers.unlinkProvider(user, providerId);
+    } else {
+      toast({
+        title: 'No User Found',
+        description: 'No authenticated user available.'
+      });
       return false;
     }
   }
