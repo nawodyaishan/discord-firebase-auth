@@ -24,6 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SignUpForm from './SignUpForm';
 import useCurrentUser from '@/hooks/use-current-user.ts';
+import { AuthHelpers } from '@/helpers/auth-helpers.ts';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -36,10 +37,11 @@ const updatePasswordSchema = z.object({
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
 });
 
-type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>;
+type LinkPasswordFormData = z.infer<typeof updatePasswordSchema>;
 
 function AuthComponent() {
-  const { login, logout, twitterLogin, updateToEmailAndPassword } = useUserStore((state) => state);
+  const { login, logout, twitterLogin, linkEmailAndPassword, linkTwitterAuthToEmailPass } =
+    useUserStore((state) => state);
   const { authUser } = useCurrentUser();
   const { toast } = useToast();
 
@@ -56,7 +58,7 @@ function AuthComponent() {
     register: registerUpdatePassword,
     handleSubmit: handleUpdatePasswordSubmit,
     formState: { errors: updatePasswordErrors }
-  } = useForm<UpdatePasswordFormData>({
+  } = useForm<LinkPasswordFormData>({
     resolver: zodResolver(updatePasswordSchema),
     mode: 'onBlur'
   });
@@ -115,7 +117,7 @@ function AuthComponent() {
     }
   };
 
-  const handleUpdateToEmailAndPassword = async (data: UpdatePasswordFormData) => {
+  const handleLinkEmailAndPassword = async (data: LinkPasswordFormData) => {
     if (!authUser || !authUser.email) {
       toast({
         title: 'Authentication Required',
@@ -125,7 +127,7 @@ function AuthComponent() {
     }
 
     try {
-      const success = await updateToEmailAndPassword(authUser.email, data.password);
+      const success = await linkEmailAndPassword(authUser, authUser.email, data.password);
       if (success) {
         toast({
           title: 'Update successful',
@@ -140,6 +142,20 @@ function AuthComponent() {
         title: 'Update failed',
         description: error.message || 'An error occurred while updating your password.'
       });
+    }
+  };
+
+  const handleLinkTwitter = async () => {
+    if (!authUser) {
+      console.log('No user is logged in.');
+      return;
+    }
+
+    const success = await linkTwitterAuthToEmailPass(authUser);
+    if (success) {
+      console.log('Twitter linked successfully.');
+    } else {
+      console.error('Failed to link Twitter.');
     }
   };
 
@@ -196,13 +212,13 @@ function AuthComponent() {
               </SheetContent>
             </Sheet>
           </DropdownMenuItem>
-          {authUser && (
+          {authUser && !AuthHelpers.checkAuthProvider(authUser, 'password') && (
             <DropdownMenuItem>
               <Sheet>
                 <SheetTrigger asChild>
                   <Button onClick={(e) => e.stopPropagation()}>
                     <UserCheck className="mr-2 h-4 w-4" />
-                    Twitter to Email Auth
+                    Link Email Auth
                   </Button>
                 </SheetTrigger>
                 <SheetContent onClick={(e) => e.stopPropagation()}>
@@ -210,7 +226,7 @@ function AuthComponent() {
                     <SheetTitle>Update Password</SheetTitle>
                   </SheetHeader>
                   <form
-                    onSubmit={handleUpdatePasswordSubmit(handleUpdateToEmailAndPassword)}
+                    onSubmit={handleUpdatePasswordSubmit(handleLinkEmailAndPassword)}
                     className="p-4">
                     <div className="mb-4">
                       <Label>Password</Label>
@@ -273,6 +289,14 @@ function AuthComponent() {
               </SheetContent>
             </Sheet>
           </DropdownMenuItem>
+          {authUser && !AuthHelpers.checkAuthProvider(authUser, 'twitter.com') && (
+            <DropdownMenuItem onSelect={handleLinkTwitter}>
+              <Button variant={'destructive'}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Link Twitter Account
+              </Button>
+            </DropdownMenuItem>
+          )}
           {authUser && (
             <DropdownMenuItem onSelect={handleLogout}>
               <Button variant={'destructive'}>

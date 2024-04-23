@@ -1,29 +1,25 @@
-import { linkWithCredential, signInWithPopup, TwitterAuthProvider, User } from 'firebase/auth';
+import { EmailAuthProvider, linkWithCredential, User } from 'firebase/auth';
 import { toast } from '@/components/ui/use-toast.ts';
-import { auth } from '@/config/firebase-config.ts';
+import { AUTH_PROVIDER_DATA } from '@/constants/provider-data.ts';
+import * as _ from 'lodash';
 
 export abstract class AuthHelpers {
-  public static async linkTwitterAccount(user: User) {
-    const provider = new TwitterAuthProvider();
+  public static async linkEmailAndPassword(user: User, email: string, password: string) {
+    const emailCredential = EmailAuthProvider.credential(email, password);
+
     try {
-      const result = await signInWithPopup(auth, provider);
-      const twitterCredential = TwitterAuthProvider.credentialFromResult(result);
-      if (!twitterCredential) {
-        throw Error('Twitter credentials not found.');
-      }
-      await linkWithCredential(user, twitterCredential);
-      console.log('Twitter account linked successfully');
+      await linkWithCredential(user, emailCredential);
+      console.log('Email and password successfully linked to account');
       toast({
         title: 'Account Updated',
-        description:
-          'Your authentication method has been updated to email and password, and your Twitter account is linked.'
+        description: 'Email and password have been added to your account.'
       });
       return true;
-    } catch (error) {
-      console.error('Failed to link Twitter account:', error);
+    } catch (error: any) {
+      console.error('Failed to link email and password:', error);
       toast({
-        title: 'Update failed',
-        description: 'An error occurred while linking Twitter account.'
+        title: 'Linking Failed',
+        description: error.message || 'Failed to add email and password to your account.'
       });
       return false;
     }
@@ -68,20 +64,19 @@ export abstract class AuthHelpers {
     }
   }
 
-  public static getProviderName(providerId: string) {
-    switch (providerId) {
-      case 'password':
-        return 'Email/Password';
-      case 'twitter.com':
-        return 'Twitter';
-      case 'facebook.com':
-        return 'Facebook';
-      case 'github.com':
-        return 'GitHub';
-      case 'google.com':
-        return 'Google';
-      default:
-        return providerId;
+  public static checkAuthProvider(authUser: User, provider: string): boolean {
+    const hasProviderAuth = _.some(authUser.providerData, { providerId: provider });
+    if (hasProviderAuth) {
+      console.log(`User is authenticated with ${provider}`);
+      return true;
+    } else {
+      console.log(`User is not authenticated with ${provider}`);
+      return false;
     }
+  }
+
+  public static getProviderName(providerId: string): string {
+    const provider = _.find(AUTH_PROVIDER_DATA, { id: providerId });
+    return provider ? provider.name : providerId;
   }
 }

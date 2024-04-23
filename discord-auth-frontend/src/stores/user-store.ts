@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import {
   createUserWithEmailAndPassword,
+  linkWithPopup,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  TwitterAuthProvider
+  TwitterAuthProvider,
+  User
 } from 'firebase/auth';
 import { auth } from '../config/firebase-config';
 import { FirebaseError } from '@firebase/util';
@@ -18,7 +20,8 @@ interface UserState {
   login: (email: string, password: string) => Promise<boolean | undefined>;
   logout: () => Promise<boolean | undefined>;
   twitterLogin: () => Promise<boolean | undefined>;
-  updateToEmailAndPassword: (email: string, password: string) => Promise<boolean>;
+  linkEmailAndPassword: (user: User, email: string, password: string) => Promise<boolean>;
+  linkTwitterAuthToEmailPass: (user: User) => Promise<boolean>;
 }
 
 const useUserStore = create<UserState>((set, _get) => ({
@@ -123,24 +126,47 @@ const useUserStore = create<UserState>((set, _get) => ({
       return false;
     }
   },
-  updateToEmailAndPassword: async (email: string, password: string) => {
+  linkEmailAndPassword: async (user: User, email, password) => {
+    if (user) {
+      return AuthHelpers.linkEmailAndPassword(user, email, password);
+    } else {
+      toast({
+        title: 'No Authentication Found',
+        description: 'No user is currently logged in.'
+      });
+      return false;
+    }
+  },
+  linkTwitterAuthToEmailPass: async (user: User) => {
+    if (!user) {
+      toast({
+        title: 'No Authentication Found',
+        description: 'No user is currently logged in.'
+      });
+      return false;
+    }
+    const provider = new TwitterAuthProvider();
     try {
-      console.log('🚀 - updateToEmailAndPassword', email, password);
-      const existingUser = await signInWithEmailAndPassword(auth, email, password);
-      await AuthHelpers.linkTwitterAccount(existingUser.user);
+      const result = await linkWithPopup(user, provider);
+      set({ email: result.user.email || '', password: '' });
+      console.log('Twitter account linked successfully');
+      toast({
+        title: 'Twitter Link Successful',
+        description: 'Your Twitter account has been linked successfully!'
+      });
       return true;
     } catch (error: unknown) {
-      if (error instanceof FirebaseError && error.code === 'auth/user-not-found') {
-        await _get().register(email, password);
-        return true;
-      } else {
-        console.error('Failed to update authentication method:', error);
+      if (error instanceof FirebaseError) {
+        console.error('Failed to link Twitter account:', error);
         toast({
-          title: 'Update failed',
-          description: 'An error occurred while updating authentication method.'
+          title: 'Twitter Link Failed',
+          description: error.message || 'Failed to link Twitter account.'
         });
         return false;
+      } else {
+        console.error('Unexpected error:', error);
       }
+      return false;
     }
   }
 }));
