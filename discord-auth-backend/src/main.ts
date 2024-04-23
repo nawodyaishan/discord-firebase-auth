@@ -23,7 +23,7 @@ async function bootstrap(): Promise<void> {
   await app.listen(configService.get<number>('NEST_APP_PORT')).then(() => {
     const logger = new Logger('Bootstrap');
     logger.log(
-      `🚀 Discord Auth NestJS API is running on: http://localhost:${configService.get<number>('NEST_APP_PORT')}/`,
+      `🚀 Discord Auth NestJS API is running on: http://localhost:${configService.get<number>('NEST_APP_PORT')}/api`,
     );
   });
 }

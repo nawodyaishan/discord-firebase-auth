@@ -1,4 +1,11 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Query,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller()
@@ -17,7 +24,10 @@ export class AppController {
     this.logger.log('Received OAuth redirect with code: ' + code);
     if (!code) {
       this.logger.error('No code provided in query parameters');
-      throw new Error('Authorization code is required');
+      throw new HttpException(
+        'Authorization code is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     try {
       const token = await this.appService.getDiscordOAuthRedirect(code);
@@ -25,7 +35,10 @@ export class AppController {
       return token;
     } catch (error) {
       this.logger.error('Error during Discord OAuth: ' + error.message);
-      throw error;
+      throw new HttpException(
+        'Failed to authenticate with Discord',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
