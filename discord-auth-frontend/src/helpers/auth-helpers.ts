@@ -1,4 +1,34 @@
+import { linkWithCredential, signInWithPopup, TwitterAuthProvider, User } from 'firebase/auth';
+import { toast } from '@/components/ui/use-toast.ts';
+import { auth } from '@/config/firebase-config.ts';
+
 export abstract class AuthHelpers {
+  public static async linkTwitterAccount(user: User) {
+    const provider = new TwitterAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const twitterCredential = TwitterAuthProvider.credentialFromResult(result);
+      if (!twitterCredential) {
+        throw Error('Twitter credentials not found.');
+      }
+      await linkWithCredential(user, twitterCredential);
+      console.log('Twitter account linked successfully');
+      toast({
+        title: 'Account Updated',
+        description:
+          'Your authentication method has been updated to email and password, and your Twitter account is linked.'
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to link Twitter account:', error);
+      toast({
+        title: 'Update failed',
+        description: 'An error occurred while linking Twitter account.'
+      });
+      return false;
+    }
+  }
+
   public static getFirebaseErrorMessage(errorCode: string): string | undefined {
     switch (errorCode) {
       case 'auth/email-already-in-use':
@@ -35,6 +65,23 @@ export abstract class AuthHelpers {
         return 'Invalid password. Please try again.';
       default:
         return 'An unknown error occurred. Please try again later.';
+    }
+  }
+
+  public static getProviderName(providerId: string) {
+    switch (providerId) {
+      case 'password':
+        return 'Email/Password';
+      case 'twitter.com':
+        return 'Twitter';
+      case 'facebook.com':
+        return 'Facebook';
+      case 'github.com':
+        return 'GitHub';
+      case 'google.com':
+        return 'Google';
+      default:
+        return providerId;
     }
   }
 }

@@ -1,4 +1,4 @@
-import { LogOut, UserCheck } from 'lucide-react';
+import { LogOut, UserCheck, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import SignUpForm from './SignUpForm';
 import useCurrentUser from '@/hooks/use-current-user.ts';
 
 const loginSchema = z.object({
@@ -31,8 +32,14 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+const updatePasswordSchema = z.object({
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
+});
+
+type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>;
+
 function AuthComponent() {
-  const { login, logout } = useUserStore((state) => state);
+  const { login, logout, twitterLogin, updateToEmailAndPassword } = useUserStore((state) => state);
   const { authUser } = useCurrentUser();
   const { toast } = useToast();
 
@@ -42,6 +49,15 @@ function AuthComponent() {
     formState: { errors }
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onBlur'
+  });
+
+  const {
+    register: registerUpdatePassword,
+    handleSubmit: handleUpdatePasswordSubmit,
+    formState: { errors: updatePasswordErrors }
+  } = useForm<UpdatePasswordFormData>({
+    resolver: zodResolver(updatePasswordSchema),
     mode: 'onBlur'
   });
 
@@ -74,12 +90,64 @@ function AuthComponent() {
       });
     }
   };
+  const handleTwitterLogin = async () => {
+    try {
+      const success = await twitterLogin();
+      if (success) {
+        console.log('Twitter login successful');
+        toast({
+          title: 'Twitter Login Successful',
+          description: 'You are now logged in with Twitter!'
+        });
+      } else {
+        console.log('Twitter login failed');
+        toast({
+          title: 'Twitter Login Failed',
+          description: 'An error occurred while signing in with Twitter.'
+        });
+      }
+    } catch (error) {
+      console.error('Error during Twitter login:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred during Twitter login.'
+      });
+    }
+  };
+
+  const handleUpdateToEmailAndPassword = async (data: UpdatePasswordFormData) => {
+    if (!authUser || !authUser.email) {
+      toast({
+        title: 'Authentication Required',
+        description: 'You must be logged in to update credentials.'
+      });
+      return;
+    }
+
+    try {
+      const success = await updateToEmailAndPassword(authUser.email, data.password);
+      if (success) {
+        toast({
+          title: 'Update successful',
+          description: 'Your password has been updated.'
+        });
+      } else {
+        throw new Error('Update failed without a specific error message.');
+      }
+    } catch (error: any) {
+      console.error('Update Error:', error);
+      toast({
+        title: 'Update failed',
+        description: error.message || 'An error occurred while updating your password.'
+      });
+    }
+  };
 
   return (
     <div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Account</Button>
+          <Button variant="outline">Authentication Actions</Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuItem>
@@ -125,6 +193,83 @@ function AuthComponent() {
                     </SheetClose>
                   </SheetFooter>
                 </form>
+              </SheetContent>
+            </Sheet>
+          </DropdownMenuItem>
+          {authUser && (
+            <DropdownMenuItem>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button onClick={(e) => e.stopPropagation()}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Twitter to Email Auth
+                  </Button>
+                </SheetTrigger>
+                <SheetContent onClick={(e) => e.stopPropagation()}>
+                  <SheetHeader>
+                    <SheetTitle>Update Password</SheetTitle>
+                  </SheetHeader>
+                  <form
+                    onSubmit={handleUpdatePasswordSubmit(handleUpdateToEmailAndPassword)}
+                    className="p-4">
+                    <div className="mb-4">
+                      <Label>Password</Label>
+                      <Input
+                        type="password"
+                        {...registerUpdatePassword('password')}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {updatePasswordErrors.password && (
+                        <p className="text-red-500 text-xs italic">
+                          {updatePasswordErrors.password.message}
+                        </p>
+                      )}
+                    </div>
+                    <SheetFooter>
+                      <SheetClose asChild>
+                        <Button type="submit">Update</Button>
+                      </SheetClose>
+                    </SheetFooter>
+                  </form>
+                </SheetContent>
+              </Sheet>
+            </DropdownMenuItem>
+          )}
+          {!authUser && (
+            <DropdownMenuItem>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button onClick={(e) => e.stopPropagation()}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Sign Up
+                  </Button>
+                </SheetTrigger>
+                <SheetContent onClick={(e) => e.stopPropagation()}>
+                  <SheetHeader>
+                    <SheetTitle>Sign Up</SheetTitle>
+                  </SheetHeader>
+                  <SignUpForm />
+                </SheetContent>
+              </Sheet>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem>
+            <Sheet>
+              {!authUser && (
+                <SheetTrigger asChild>
+                  <Button onClick={(e) => e.stopPropagation()}>
+                    <X className="mr-2 h-4 w-4" />
+                    Twitter Login
+                  </Button>
+                </SheetTrigger>
+              )}
+              <SheetContent onClick={(e) => e.stopPropagation()}>
+                <SheetHeader>
+                  <SheetTitle>Twitter Login</SheetTitle>
+                </SheetHeader>
+                <Button onClick={handleTwitterLogin} type="submit">
+                  Sign in with Twitter
+                </Button>
               </SheetContent>
             </Sheet>
           </DropdownMenuItem>

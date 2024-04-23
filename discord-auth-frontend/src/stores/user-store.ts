@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  TwitterAuthProvider
+} from 'firebase/auth';
 import { auth } from '../config/firebase-config';
 import { FirebaseError } from '@firebase/util';
 import { AuthHelpers } from '@/helpers/auth-helpers.ts';
@@ -11,6 +17,8 @@ interface UserState {
   register: (email: string, password: string) => Promise<boolean | undefined>;
   login: (email: string, password: string) => Promise<boolean | undefined>;
   logout: () => Promise<boolean | undefined>;
+  twitterLogin: () => Promise<boolean | undefined>;
+  updateToEmailAndPassword: (email: string, password: string) => Promise<boolean>;
 }
 
 const useUserStore = create<UserState>((set, _get) => ({
@@ -90,6 +98,49 @@ const useUserStore = create<UserState>((set, _get) => ({
         console.error('Unexpected error:', error);
       }
       return false;
+    }
+  },
+  twitterLogin: async () => {
+    try {
+      const provider = new TwitterAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      set({ email: user.email || '', password: '' });
+
+      toast({
+        title: 'Twitter Login successful',
+        description: 'You are now logged in with Twitter!'
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Failed to sign in with Twitter:', error);
+      toast({
+        title: 'Twitter Login failed',
+        description: 'An error occurred while signing in with Twitter.'
+      });
+      return false;
+    }
+  },
+  updateToEmailAndPassword: async (email: string, password: string) => {
+    try {
+      console.log('🚀 - updateToEmailAndPassword', email, password);
+      const existingUser = await signInWithEmailAndPassword(auth, email, password);
+      await AuthHelpers.linkTwitterAccount(existingUser.user);
+      return true;
+    } catch (error: unknown) {
+      if (error instanceof FirebaseError && error.code === 'auth/user-not-found') {
+        await _get().register(email, password);
+        return true;
+      } else {
+        console.error('Failed to update authentication method:', error);
+        toast({
+          title: 'Update failed',
+          description: 'An error occurred while updating authentication method.'
+        });
+        return false;
+      }
     }
   }
 }));
