@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '18' 
       - name: Install dependencies
         run: yarn install
       - name: Build
@@ -27,3 +27,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DISCORD_TWITTER_AUTH_DEMO }}'
           channelId: live
           projectId: discord-twitter-auth-demo
+          entryPoint: ./discord-auth-frontend 
