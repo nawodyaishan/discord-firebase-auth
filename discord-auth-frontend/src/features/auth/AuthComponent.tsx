@@ -69,6 +69,10 @@ function AuthComponent() {
     mode: 'onBlur'
   });
 
+  const handleDiscordLogin = () => {
+    window.location.href = AuthHelpers.getDiscordOAuthUrl();
+  };
+
   const onLoginSubmit = async (data: LoginFormData) => {
     const success = await login(data.email, data.password);
     if (success) {
@@ -249,6 +253,14 @@ function AuthComponent() {
               </SheetContent>
             </Sheet>
           </DropdownMenuItem>
+          {!authUser && (
+            <DropdownMenuItem onSelect={handleDiscordLogin}>
+              <Button variant={'default'}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Sign in with Discord
+              </Button>
+            </DropdownMenuItem>
+          )}
           {authUser && !AuthHelpers.checkAuthProvider(authUser, 'password') && (
             <DropdownMenuItem>
               <Sheet>

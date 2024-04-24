@@ -2,6 +2,7 @@ import { EmailAuthProvider, linkWithCredential, unlink, User } from 'firebase/au
 import { toast } from '@/components/ui/use-toast.ts';
 import { AUTH_PROVIDER_DATA } from '@/constants/provider-data.ts';
 import * as _ from 'lodash';
+import { FirebaseError } from '@firebase/util';
 
 export abstract class AuthHelpers {
   public static async linkEmailAndPassword(user: User, email: string, password: string) {
@@ -23,6 +24,23 @@ export abstract class AuthHelpers {
       });
       return false;
     }
+  }
+
+  public static getDiscordOAuthUrl(): string {
+    return import.meta.env.VITE_DISCORD_REDIRECT_URI;
+  }
+
+  public static handleAuthError(error: any) {
+    let errorMessage = 'An unexpected error occurred.';
+    if (error instanceof FirebaseError) {
+      errorMessage = error.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    toast({
+      title: 'Error',
+      description: errorMessage
+    });
   }
 
   public static async unlinkProvider(user: User, providerId: string): Promise<boolean> {

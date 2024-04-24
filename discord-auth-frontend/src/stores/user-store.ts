@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import {
   createUserWithEmailAndPassword,
+  getAuth,
   linkWithPopup,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -14,8 +16,11 @@ import { AuthHelpers } from '@/helpers/auth-helpers.ts';
 import { toast } from '@/components/ui/use-toast.ts';
 
 interface UserState {
+  user: User | null;
   email: string;
   password: string;
+  loading: boolean;
+  error: Error | null;
   register: (email: string, password: string) => Promise<boolean | undefined>;
   login: (email: string, password: string) => Promise<boolean | undefined>;
   logout: () => Promise<boolean | undefined>;
@@ -23,11 +28,15 @@ interface UserState {
   linkEmailAndPassword: (user: User, email: string, password: string) => Promise<boolean>;
   linkTwitterAuthToEmailPass: (user: User) => Promise<boolean>;
   unlinkAuthProvider: (user: User, providerId: string) => Promise<boolean>;
+  authenticateWithFirebaseToken: (code: string) => Promise<void>;
 }
 
 const useUserStore = create<UserState>((set, _get) => ({
+  user: null,
   email: '',
   password: '',
+  loading: false,
+  error: null,
   register: async (email, password) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -200,6 +209,25 @@ const useUserStore = create<UserState>((set, _get) => ({
         console.error('Unexpected error:', error);
       }
       return false;
+    }
+  },
+  authenticateWithFirebaseToken: async (firebaseToken) => {
+    const auth = getAuth();
+    set({ loading: true });
+    try {
+      const userCredential = await signInWithCustomToken(auth, firebaseToken);
+      set({ user: userCredential.user, loading: false });
+      toast({
+        title: 'Authentication Successful',
+        description: 'You are now logged in!'
+      });
+    } catch (error: any) {
+      console.error('Error during Firebase authentication:', error);
+      set({ error, loading: false });
+      toast({
+        title: 'Authentication Failed',
+        description: 'Failed to log in with Discord.'
+      });
     }
   }
 }));
