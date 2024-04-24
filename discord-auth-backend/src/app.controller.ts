@@ -1,18 +1,24 @@
 import {
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
   Logger,
   Query,
+  Redirect,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AppService } from './app.service';
+import { DiscordAuthDto } from './dto/discord-auth.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
 
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private configService: ConfigService,
+  ) {}
 
   @Get('')
   getHello(): string {
@@ -20,25 +26,19 @@ export class AppController {
   }
 
   @Get('auth/discord/redirect')
-  async redirect(@Query('code') code: string): Promise<string> {
-    this.logger.log('Received OAuth redirect with code: ' + code);
-    if (!code) {
-      this.logger.error('No code provided in query parameters');
-      throw new HttpException(
-        'Authorization code is required',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  @Redirect()
+  async redirect(@Query() discordAuthDto: DiscordAuthDto) {
     try {
-      const token = await this.appService.getDiscordOAuthRedirect(code);
-      this.logger.log('Obtained access token');
-      return token;
-    } catch (error) {
-      this.logger.error('Error during Discord OAuth: ' + error.message);
-      throw new HttpException(
-        'Failed to authenticate with Discord',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      const firebaseToken = await this.appService.getDiscordOAuthRedirect(
+        discordAuthDto.code,
       );
+      const frontendUrl = `${this.configService.get<string>('FRONTEND_APP_URL')}/auth?token=${firebaseToken}`;
+      return { url: frontendUrl };
+    } catch (error) {
+      this.logger.error('Error during authentication process:', error);
+      const errorUrl = `${this.configService.get<string>('FRONTEND_APP_URL')}/error?message=${encodeURIComponent(error.message)}`;
+      return { url: errorUrl };
     }
   }
 }
