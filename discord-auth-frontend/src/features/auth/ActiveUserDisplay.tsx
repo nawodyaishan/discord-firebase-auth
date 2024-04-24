@@ -1,10 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import useCurrentUser from '@/hooks/use-current-user.ts';
 import { AuthHelpers } from '@/helpers/auth-helpers.ts';
+import { useEffect } from 'react';
+import _ from 'lodash';
 
 function ActiveUserDisplay() {
-  const { authUser, user, authUserLoading, userLoading, userError, authUserError } =
-    useCurrentUser();
+  const { authUser, authUserLoading, userLoading, userError, authUserError } = useCurrentUser();
+
+  useEffect(() => {
+    console.log(
+      '🤡 - providerData:',
+      _.map(authUser?.providerData, (provider) => {
+        return _.pick(provider, ['providerId', 'uid']);
+      })
+    );
+  }, [authUser]);
 
   if (authUserLoading || userLoading) {
     return (
@@ -45,9 +55,9 @@ function ActiveUserDisplay() {
             <CardDescription>
               <span className="font-bold">Email:</span> {authUser.email}
             </CardDescription>
-            {user && (
+            {authUser && (
               <CardDescription>
-                <span className="font-bold">Name:</span> {authUser.displayName || user.uid}
+                <span className="font-bold">uid:</span> {authUser.uid}
               </CardDescription>
             )}
             <CardDescription>
